@@ -1,4 +1,15 @@
+# Fork dev plan:
+ - update server to fastmcp v2+
+ - configure http transport to allow remote server
+ - merge PR allowing remote access to Blender add-on (open port on all IPs, not only loopback)
+ - Implement sessions with local storage, to allow a single MCP servicing multiple sessions to multiple Blender Clients
+ - Test multi modal feedback (using Qwen3-vl locally with ollama)
 
+## Notes
+There is no plan for Security. Transport will be non-encrypted and sessions ID will be plain-text.  
+This is targeted to be used on a secure LAN with compliant clients.  
+
+Original Description bellow.
 
 # BlenderMCP - Blender Model Context Protocol Integration
 
