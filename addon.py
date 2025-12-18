@@ -143,6 +143,15 @@ class BlenderMCPServer:
                         # Try to parse command
                         command = json.loads(buffer.decode('utf-8'))
                         buffer = b''
+                        if "Session_ID" in command:
+                            if command["Session_ID"] != scene.blendermcp_remote_session:
+                                print("Unexpected Remote Session. Closing connection.")
+                                break
+                            else:
+                                print("Accepted Connection From Expected Session")
+                        else:
+                            print("No Session ID in command. Closing Connection.")
+                        buffer = b''
 
                         # Execute command in Blender's main thread
                         def execute_wrapper():
@@ -2127,6 +2136,10 @@ class BLENDERMCP_PT_Panel(bpy.types.Panel):
         scene = context.scene
 
         layout.prop(scene, "blendermcp_port")
+        layout.prop(scene, "blendermcp_allow_remote", text="Allow remote MCP Servers to Connect")
+        if scene.blendermcp_allow_remote:
+            layout.prop(scene, "blendermcp_remote_session", text="Session name allowed to connect")
+
         layout.prop(scene, "blendermcp_use_polyhaven", text="Use assets from Poly Haven")
 
         layout.prop(scene, "blendermcp_use_hyper3d", text="Use Hyper3D Rodin 3D model generation")
@@ -2178,9 +2191,13 @@ class BLENDERMCP_OT_StartServer(bpy.types.Operator):
     def execute(self, context):
         scene = context.scene
 
+        host = 'localhost'
+        if scene.blendermcp_allow_remote:
+            host = '0.0.0.0'
+
         # Create a new server instance
         if not hasattr(bpy.types, "blendermcp_server") or not bpy.types.blendermcp_server:
-            bpy.types.blendermcp_server = BlenderMCPServer(port=scene.blendermcp_port)
+            bpy.types.blendermcp_server = BlenderMCPServer(host=host, port=scene.blendermcp_port)
 
         # Start the server
         bpy.types.blendermcp_server.start()
@@ -2191,8 +2208,8 @@ class BLENDERMCP_OT_StartServer(bpy.types.Operator):
 # Operator to stop the server
 class BLENDERMCP_OT_StopServer(bpy.types.Operator):
     bl_idname = "blendermcp.stop_server"
-    bl_label = "Stop the connection to Claude"
-    bl_description = "Stop the connection to Claude"
+    bl_label = "Stop the connection to MCP"
+    bl_description = "Stop the connection to MCP"
 
     def execute(self, context):
         scene = context.scene
@@ -2214,6 +2231,19 @@ def register():
         default=9876,
         min=1024,
         max=65535
+    )
+
+    bpy.types.Scene.blendermcp_allow_remote bpy.props.BoolProperty(
+        name="Allow Remote",
+        description="Allow remote connection by serving on all interfaces",
+        defaul=False
+    )
+
+    bpy.types.Scene.blendermcp_remote_session = bpy.props.StringProperty(
+        name="Expected Session Connection",
+        subtype="PASSWORD",
+        description="Expected Session Connection",
+        default=""
     )
 
     bpy.types.Scene.blendermcp_server_running = bpy.props.BoolProperty(
@@ -2347,6 +2377,8 @@ def unregister():
     bpy.utils.unregister_class(BLENDERMCP_OT_StopServer)
 
     del bpy.types.Scene.blendermcp_port
+    del bpy.types.Scene.blendermcp_allow_remote
+    del bpy.types.Scene.blendermcp_remote_session
     del bpy.types.Scene.blendermcp_server_running
     del bpy.types.Scene.blendermcp_use_polyhaven
     del bpy.types.Scene.blendermcp_use_hyper3d
